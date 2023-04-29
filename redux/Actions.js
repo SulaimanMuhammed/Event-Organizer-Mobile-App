@@ -1,5 +1,15 @@
-import { combineReducers } from 'redux';
-import { INCREASE_COUNTER, DECREASE_COUNTER, SHOW_INTRO, SET_CHECKED_ITEM, SET_TOTAL, LOGIN, REGISTER } from './Types';
+import { combineReducers } from "redux";
+import {
+  INCREASE_COUNTER,
+  DECREASE_COUNTER,
+  SHOW_INTRO,
+  SET_CHECKED_ITEM,
+  SET_TOTAL,
+  LOGIN,
+  REGISTER,
+  ADD_ARRAY,
+  CLEAR_ARRAYS,
+} from "./Types";
 
 export const increaseCounter = () => {
   return { type: INCREASE_COUNTER };
@@ -13,10 +23,10 @@ export const showIntro = () => ({
   type: SHOW_INTRO,
 });
 
-export const setCheckedItem = (itemId, quantity, price, name) => ({
-  type: SET_CHECKED_ITEM,
-  payload: { itemId, quantity, price, name },
-});
+// export const setCheckedItem = (item) => ({
+//   type: SET_CHECKED_ITEM,
+//   payload:  item ,
+// });
 
 export const setTotal = (itemId, quantity) => ({
   type: SET_TOTAL,
@@ -32,9 +42,21 @@ export const register = (username, email, password) => ({
   type: REGISTER,
   payload: { username, email, password },
 });
+export const addArray = (array) => {
+  return {
+    type: ADD_ARRAY,
+    payload: array,
+  };
+};
+
+export const clearArrays = () => {
+  return {
+    type: CLEAR_ARRAYS,
+  };
+};
 
 const initialState = {
-  currentPage: 'Home',
+  currentPage: "Home",
   cartItems: [],
   totalPrice: 0,
   counter: 0,
@@ -42,11 +64,12 @@ const initialState = {
   checkedItems: [],
   cart: [],
   userInfo: null,
+  arrayOfArrays: [],
 };
 
 const currentPageReducer = (state = initialState.currentPage, action) => {
   switch (action.type) {
-    case 'SET_CURRENT_PAGE':
+    case "SET_CURRENT_PAGE":
       return action.payload;
     default:
       return state;
@@ -55,9 +78,12 @@ const currentPageReducer = (state = initialState.currentPage, action) => {
 
 const cartItemsReducer = (state = initialState.cartItems, action) => {
   switch (action.type) {
-    case SET_CHECKED_ITEM:
+    case "CART_ITEM":
       const { itemId, quantity, price, name } = action.payload;
-      const newCheckedItems = { ...state.checkedItems, [itemId]: { quantity, price, name } };
+      const newCheckedItems = {
+        ...state.checkedItems,
+        [itemId]: { quantity, price, name },
+      };
       return { ...state, checkedItems: newCheckedItems };
     default:
       return state;
@@ -87,7 +113,7 @@ const counterReducer = (state = initialState.counter, action) => {
 };
 const cartReducer = (state = initialState, action) => {
   switch (action.type) {
-    case 'ADD_TO_CART':
+    case "ADD_TO_CART":
       const item = action.payload;
       const existingItem = state.items.find((i) => i.id === item.id);
       if (existingItem) {
@@ -107,7 +133,7 @@ const cartReducer = (state = initialState, action) => {
           total: state.total + item.price,
         };
       }
-    case 'REMOVE_FROM_CART':
+    case "REMOVE_FROM_CART":
       const itemId = action.payload;
       const itemToRemove = state.items.find((i) => i.id === itemId);
       if (itemToRemove.quantity === 1) {
@@ -117,42 +143,39 @@ const cartReducer = (state = initialState, action) => {
           total: state.total - itemToRemove.price,
         };
       } else {
-        itemToRemove
-
-.quantity -= 1;
-return {
-...state,
-items: [...state.items],
-total: state.total - itemToRemove.price,
-};
-}
-default:
-return state;
-}
+        itemToRemove.quantity -= 1;
+        return {
+          ...state,
+          items: [...state.items],
+          total: state.total - itemToRemove.price,
+        };
+      }
+    default:
+      return state;
+  }
 };
 
 const showIntroReducer = (state = initialState.showIntro, action) => {
-switch (action.type) {
-case SHOW_INTRO:
-return !state;
-default:
-return state;
-}
+  switch (action.type) {
+    case SHOW_INTRO:
+      return !state;
+    default:
+      return state;
+  }
 };
 
 const checkedItemsReducer = (state = initialState.checkedItems, action) => {
-switch (action.type) {
-case SET_CHECKED_ITEM:
-const { itemId, quantity, price, name } = action.payload;
-const newCheckedItems = { ...state, [itemId]: { quantity, price, name } };
-return newCheckedItems;
-default:
-return state;
-}
+  switch (action.type) {
+    case SET_CHECKED_ITEM:
+      const { itemId, quantity, price, name } = action.payload;
+      const newCheckedItems = { ...state, [itemId]: { quantity, price, name } };
+      return newCheckedItems;
+    default:
+      return state;
+  }
 };
 
 const userReducer = (state = initialState.userInfo, action) => {
-  
   switch (action.type) {
     case LOGIN:
       return {
@@ -160,7 +183,7 @@ const userReducer = (state = initialState.userInfo, action) => {
         username: action.payload.username,
         password: action.payload.password,
       };
-    case 'LOGOUT':
+    case "LOGOUT":
       return {
         ...state,
         username: null,
@@ -178,17 +201,36 @@ const userReducer = (state = initialState.userInfo, action) => {
       return state;
   }
 };
-
+const setCheckedItem = (state = initialState, action) => {
+  switch (action.type) {
+    case ADD_ARRAY:
+      const newArray = action.payload;
+      const newArrayOfArrays = [...state.arrayOfArrays, newArray];
+      // console.log("added", newArrayOfArrays)
+      return {
+        ...state,
+        arrayOfArrays: newArrayOfArrays,
+      };
+    case CLEAR_ARRAYS:
+      return {
+        ...state,
+        arrayOfArrays: [],
+      };
+    default:
+      return state;
+  }
+};
 
 const rootReducer = combineReducers({
-currentPage: currentPageReducer,
-cartItems: cartItemsReducer,
-totalPrice: totalPriceReducer,
-counter: counterReducer,
-cart: cartReducer,
-showIntro: showIntroReducer,
-checkedItems: checkedItemsReducer,
-userInfo: userReducer,
+  currentPage: currentPageReducer,
+  cartItems: cartItemsReducer,
+  totalPrice: totalPriceReducer,
+  counter: counterReducer,
+  cart: cartReducer,
+  showIntro: showIntroReducer,
+  checkedItems: checkedItemsReducer,
+  userInfo: userReducer,
+  arrayOfArrays: setCheckedItem,
 });
 
 export default rootReducer;

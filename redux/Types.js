@@ -5,3 +5,5 @@ export const SHOW_INTRO = 'SHOW_INTRO';
 export const SET_CHECKED_ITEM  = 'SET_CHECKED_ITEM';
 export const LOGIN  = 'LOGIN';
 export const REGISTER  = 'REGISTER';
+export const ADD_ARRAY = 'ADD_ARRAY';
+export const CLEAR_ARRAYS = 'CLEAR_ARRAYS';
