@@ -1,26 +1,64 @@
 import React from "react";
 import { connect } from "react-redux";
-import { View, SafeAreaView, Text, Image, StyleSheet } from "react-native";
+import {
+  View,
+  SafeAreaView,
+  Text,
+  Image,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+} from "react-native";
 import { FontAwesome5 } from "react-native-vector-icons";
-//import { LOGOUT } from '../redux/Actions';
-import { userReducer, LOGOUT } from "../redux/Actions";
+import { userReducer, logout, cancelOrder } from "../redux/Actions";
 import { useSelector, useDispatch } from "react-redux";
+import { LoginAndRegister } from "./Login";
+import {
+  useNavigation,
+  useIsFocused,
+  StackActions,
+} from "@react-navigation/native";
+import { signOut } from "firebase/auth";
+import { authLog } from "../Firebase";
 
-const UserPage = ({ userData }) => {
+const UserPage = () => {
   const dispatch = useDispatch();
+  const userData = useSelector((state) => state.user.userInfo);
   const arrayOfArrays = useSelector((state) => state.arrayOfArrays);
+  const isFocused = useIsFocused();
+  const navigation = useNavigation();
 
   const handleLogout = () => {
-    dispatch(userReducer(null));
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        {
+          text: "No",
+          style: "cancel",
+        },
+        {
+          text: "Yes",
+          onPress: async () => {
+            try {
+              await authLog.signOut();
+              dispatch(logout(null));
+              dispatch(cancelOrder(null));
+              navigation.navigate("Home");
+            } catch (error) {
+              console.log("handle logout error", error);
+              // Handle error
+            }
+          },
+        },
+      ],
+      { cancelable: false }
+    );
   };
-  const handleLogin = () => {
-    dispatch(userReducer(user));
-  };
-  //console.log(user);// this.setState(prevState => ({
-  //   cartCount: prevState.cartCount + 1,
-  // }));
-  // const checkedItems = useSelector(state => state.setCheckedItem);
-  //console.log(item)
+
+  if (!userData && isFocused) {
+    return <LoginAndRegister />;
+  }
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.firstPart}>
@@ -33,7 +71,10 @@ const UserPage = ({ userData }) => {
             style={styles.profilePicture}
           />
           <Text style={styles.name}>{userData?.username}</Text>
-          <Text style={styles.email}>{userData?.email}</Text>
+          <View>
+            <Text style={styles.email}>Email: {userData?.email}</Text>
+            <Text style={styles.email}>Phone Number: {userData?.phone}</Text>
+          </View>
         </View>
       </View>
       <View style={styles.extraUser}>
@@ -69,44 +110,26 @@ const UserPage = ({ userData }) => {
           />
           <Text style={styles.textUserItem}>About App</Text>
         </View>
-        {arrayOfArrays &&
-          arrayOfArrays.map((item) =>
-            item.map((nestedItem) => (
-              <View>
-                <Text>{nestedItem.price}</Text>
-              </View>
-            ))
-          )}
+
         <View style={styles.eachUserItem}>
-          <FontAwesome5
-            name="sign-out-alt"
-            style={{ fontSize: 35, color: "#f6437b" }}
-            onPress={handleLogout}
-          />
-          <Text style={styles.textUserItem}>Logout</Text>
+          <TouchableOpacity onPress={handleLogout}>
+            <FontAwesome5
+              name="sign-out-alt"
+              style={{ fontSize: 35, color: "#f6437b" }}
+            />
+            <Text style={styles.textUserItem}>Logout</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>
   );
 };
+export default UserPage;
 
-const mapStateToProps = (state) => {
-  // console.log('Current state:', state.arrayOfArrays);
-  return {
-    userData: state.user.userInfo,
-    //arrayOfArrays: state.arrayOfArrays,
-  };
-};
-
-const mapDispatchToProps = (dispatch) => ({
-  dispatch,
-  userReducer: (userInfo) => dispatch(userReducer(userInfo)),
-});
-
-export default connect(mapStateToProps, mapDispatchToProps)(UserPage);
 const styles = StyleSheet.create({
   container: {
-    // alignItems: 'center',
+    // justifyContent: "center",
+    // alignItems: "center",
     //backgroundColor:"#f6437b",
     flex: 1,
   },

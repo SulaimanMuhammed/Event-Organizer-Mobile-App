@@ -14,6 +14,7 @@ import {
   Platform,
   Keyboard,
   ScrollView,
+  KeyboardAvoidingView,
 } from "react-native";
 import { FontAwesome5 } from "react-native-vector-icons";
 import { Modal } from "react-native";
@@ -23,128 +24,25 @@ import { StatusBar } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { addArray } from "../redux/Actions";
 
-//import { setCheckItems} from '../redux/Actions';
-const DATA = [
-  {
-    title: "Appetizers",
-    data: [
-      {
-        id: 1,
-        name: "Fried Calamari",
-        description: "Crispy fried squid with marinara sauce",
-        price: "10.99",
-        source: require("../photos/restaurant2.jpg"),
-      },
-      {
-        id: 2,
-        name: "Bruschetta",
-        description:
-          "Toasted bread topped with fresh tomatoes, garlic, and basil",
-        price: "8.99",
-        source: require("../photos/restaurant2.jpg"),
-      },
-      {
-        id: 3,
-        name: "Chicken Wings",
-        description:
-          "Crispy fried chicken wings served with your choice of sauce",
-        price: "12.99",
-        source: require("../photos/restaurant2.jpg"),
-      },
-    ],
-  },
-  {
-    title: "Entrees",
-    data: [
-      {
-        id: 4,
-        name: "Steak",
-        description:
-          "Grilled ribeye steak with garlic mashed potatoes and sautéed spinach",
-        price: "24.99",
-        source: require("../photos/restaurant2.jpg"),
-      },
-      {
-        id: 5,
-        name: "Fish and Chips",
-        description:
-          "Beer-battered cod served with French fries and tartar sauce",
-        price: "16.99",
-        source: require("../photos/restaurant2.jpg"),
-      },
-      {
-        id: 6,
-        name: "Pasta Carbonara",
-        description: "Spaghetti with bacon, eggs, and parmesan cheese",
-        price: "14.99",
-        source: require("../photos/restaurant2.jpg"),
-      },
-    ],
-  },
-  {
-    title: "Desserts",
-    data: [
-      {
-        id: 7,
-        name: "Chocolate Cake",
-        description:
-          "Rich chocolate cake with chocolate ganache and vanilla ice cream",
-        price: "8.99",
-        source: require("../photos/restaurant2.jpg"),
-      },
-      {
-        id: 8,
-        name: "Tiramisu",
-        description:
-          "Layers of espresso-soaked ladyfingers and mascarpone cream",
-        price: "9.99",
-        source: require("../photos/restaurant2.jpg"),
-      },
-      {
-        id: 9,
-        name: "Cheesecake",
-        description: "New York-style cheesecake with graham cracker crust",
-        price: "7.99",
-        source: require("../photos/restaurant2.jpg"),
-      },
-    ],
-  },
+import { app, storage } from "../Firebase";
 
-  {
-    title: "Cake",
-    data: [
-      // Assign unique IDs starting from 13
-      {
-        id: 13,
-        name: "Chocolate cake",
-        price: "50",
-        source: require("../photos/restaurant2.jpg"),
-        description: "Crispy fried squid with marinara sauce",
-      },
-      {
-        id: 14,
-        name: "Vanilla cake",
-        price: "45",
-        source: require("../photos/restaurant2.jpg"),
-        description: "Crispy fried squid with marinara sauce",
-      },
-      {
-        id: 15,
-        name: "Strawberry cake",
-        price: "55",
-        source: require("../photos/restaurant2.jpg"),
-        description: "Crispy fried squid with marinara sauce",
-      },
-    ],
-  },
-];
+import {
+  getFirestore,
+  collection,
+  getDocs,
+
+  //listCollections,
+} from "firebase/firestore";
+//import { listCollections } from "firebase/firestore/lite";
+//import { listCollections } from "firebase/firestore/lite";
 
 class BirthdayPage extends Component {
   constructor(props) {
     super(props);
     this.state = {
       activeIndex: 0,
-      data: DATA,
+      // data: DATA,
+      data: [],
       checkedItems: {}, // add checkedItems to state
       modalVisible: false,
       selectedItems: {}, //
@@ -163,17 +61,50 @@ class BirthdayPage extends Component {
       sentence: "",
       music: "",
       personInfo: [],
+      imageUrls: [],
     };
   }
-  //the managing for the two buttons : state = {
 
-  handleManageButtonPress = () => {
-    this.setState({ isManageActive: true });
-  };
+  ////////////////////////////////////////////////////////////////last update
+  async componentDidMount() {
+    try {
+      const { route } = this.props;
+      const { restaurantId } = route.params;
 
-  handleFoodButtonPress = () => {
-    this.setState({ isManageActive: false });
-  };
+      const db = getFirestore(app);
+
+      const listNames = ["CakeList", "FoodList", "DrinkList"];
+
+      const dataPromises = listNames.map(async (listName) => {
+        const listRef = collection(
+          db,
+          `birthday/${restaurantId}/menu/menuItems/${listName}`
+        );
+        const querySnapshot = await getDocs(listRef);
+        const data = querySnapshot.docs.map((doc) => doc.data());
+        return { title: listName, data: data };
+      });
+
+      const data = await Promise.all(dataPromises);
+      this.setState({ data });
+      // this is how to display an object in an array of two
+      // console.log(JSON.stringify(data, null, 2));
+      ///////////////////////////////////////////////////////////////
+      const listRef = storage.ref(`restaurants/${restaurantId}`);
+      const listResult = await listRef.listAll();
+      const photoData = await Promise.all(
+        listResult.items.map(async (itemRef) => {
+          const url = await itemRef.getDownloadURL();
+          const name = itemRef.name;
+
+          return { name, url };
+        })
+      );
+      this.setState({ imageUrls: photoData });
+    } catch (error) {
+      console.log("Error fetching restaurant photos:", error);
+    }
+  }
 
   onIncrementPress = (item) => {
     const { cart } = this.state;
@@ -182,19 +113,14 @@ class BirthdayPage extends Component {
     if (index !== -1) {
       const updatedCartItem = {
         ...cart[index],
-
         quantity: cart[index].quantity + 1,
       };
-
       cart[index] = updatedCartItem;
     } else {
-      const newCartItem = { id: item.id, ...item, quantity: 1 }; // set quantity to 1 here
+      const newCartItem = { id: item.id, ...item, quantity: 2 }; // set quantity to 1 here
       cart.push(newCartItem);
     }
-    this.setState({ cart });
-    this.setState((prevState) => ({
-      cartCount: prevState.cartCount + 1,
-    }));
+    this.setState({ incrementChanged: true }); // set flag to true when increment changes quantity
   };
 
   onDecrementPress = (item) => {
@@ -212,10 +138,48 @@ class BirthdayPage extends Component {
       }
       this.setState({ cart });
     }
-    this.setState((prevState) => ({
-      cartCount: prevState.cartCount + 1,
-    }));
   };
+
+  addToCart = () => {
+    const { cart, selectedItems } = this.state;
+
+    const index = cart.findIndex((item) => item.id === selectedItems.id);
+    if (index !== -1) {
+      // Item already exists in cart, do nothing
+    } else {
+      // Item does not exist in cart, add it with quantity 1
+      cart.push({ ...selectedItems, quantity: 1 });
+    }
+
+    // this.props.addArray(cart);
+    this.setState({
+      modalVisible: false,
+      checkedItems: {},
+      incrementChanged: false,
+    });
+
+    if (selectedItems.quantity === 0) {
+      // Quantity was not incremented, so increment it now
+      this.setState((prevState) => ({
+        cartCount: prevState.cartCount + 1,
+        cart: [...cart, { ...selectedItems, quantity: 1 }],
+      }));
+    } else if (this.state.incrementChanged) {
+      // Quantity was incremented, update cartCount
+      this.setState((prevState) => ({
+        cartCount: prevState.cartCount + 1,
+        cart,
+      }));
+    }
+  };
+  handleManageButtonPress = () => {
+    this.setState({ isManageActive: true });
+  };
+
+  handleFoodButtonPress = () => {
+    this.setState({ isManageActive: false });
+  };
+
   setModalVisible = (visible, item) => {
     this.setState({ modalVisible: visible, selectedItems: item });
   };
@@ -262,28 +226,40 @@ class BirthdayPage extends Component {
   setAddCartVisible = (visible) => {
     this.setState({ viewCartVisible: visible });
   };
-  addToCart = () => {
-    // const checkedItems = {};
-    const { cart } = this.state;
-    //cart.forEach(item => {
-
-    this.props.addArray(cart);
-    // });
-
-    this.setState({ modalVisible: false, checkedItems: {} }); // clear the checked items after adding to cart
+  renderSectionHeader = ({ section, index }) => {
+    return (
+      <View>
+        <Text>{section.title}</Text>
+      </View>
+    );
   };
 
   renderItem = ({ item, index, section }) => {
+    const imageUrlObj = this.state.imageUrls.find((obj) => {
+      return obj.name.startsWith(item.name);
+    });
+
+    const imageUrl = imageUrlObj ? imageUrlObj.url : null;
+
     return (
       <TouchableOpacity
         onPress={() => {
-          this.setState({ checkedItems: { [item]: 1 } });
-          this.setModalVisible(true, item);
+          const selectedItemsWithImgUrl = {
+            ...item,
+            imgUrl: imageUrl,
+          };
+          this.setState({
+            selectedItems: selectedItemsWithImgUrl,
+            modalVisible: true,
+          });
         }}
       >
         <View style={styles.itemContainer}>
           <View style={{ flexDirection: "row" }}>
-            <Image source={item.source} style={styles.itemPhoto} />
+            <Image
+              source={imageUrl ? { uri: imageUrl } : null}
+              style={styles.itemPhoto}
+            />
             <View style={styles.descWithPrice}>
               <Text style={styles.itemName}>{item.name}</Text>
               <Text style={styles.itemDescription}>{item.description}</Text>
@@ -302,7 +278,9 @@ class BirthdayPage extends Component {
             <View style={styles.popupContainer}>
               <View style={styles.header}>
                 <Image
-                  source={item.source} // Replace with your own image URL
+                  source={
+                    imageUrl ? { uri: this.state.selectedItems.imgUrl } : null
+                  } // Replace with your own image URL
                   style={styles.image}
                 />
               </View>
@@ -336,7 +314,7 @@ class BirthdayPage extends Component {
                           {this.state.cart.find(
                             (cartItem) =>
                               cartItem.id === this.state.selectedItems.id
-                          )?.quantity || 0}
+                          )?.quantity || 1}
                         </Text>
                       </View>
                       <TouchableOpacity
@@ -362,6 +340,7 @@ class BirthdayPage extends Component {
       </TouchableOpacity>
     );
   };
+
   onTimeChange = (event, selectedTime) => {
     if (Platform.OS === "android") {
       this.setState({ showTimePicker: false });
@@ -380,6 +359,11 @@ class BirthdayPage extends Component {
   };
 
   showTimePicker = () => {
+    // Set the selected time to the current time
+    const currentTime = new Date();
+    this.setState({ selectedTime: currentTime });
+
+    // Show the DateTimePicker component
     this.setState({ showTimePicker: true });
   };
   hideTimePicker = () => {
@@ -426,25 +410,39 @@ class BirthdayPage extends Component {
   handleMusicChange = (text) => {
     this.setState({ music: text });
   };
+  isFormComplete = () => {
+    const { selectedNumber, music } = this.state;
+    return selectedNumber !== null;
+  };
+
   render() {
     const { route } = this.props;
-    const { item } = route.params;
+    const { item } = this.props.route.params;
+    // const { item } = route.params.item;
+    const photos = route.params.photos;
     const { cart } = this.state;
     const { isManageActive } = this.state;
-    // const formattedTime = this.state.selectedTime.toLocaleTimeString([], {
-    //   hour: "numeric",
-    //   minute: "2-digit",
-    //   hour12: true,
-    // });
-    // const cartCount= this.cartCount;
-    const numbers = Array.from(Array(20).keys()); // Generate an array of numbers 0-19
+    const { data } = this.state;
 
+    const numbers = Array.from(Array(20).keys()); // Generate an array of numbers 0-19
+    const imageUrlLogo = photos.find((obj) => {
+      return obj.name.startsWith(item.logo);
+    });
+    const imageUrlRest = photos.find((obj) => {
+      return obj.name.startsWith(item.restPhoto);
+    });
+    const logo = imageUrlLogo ? imageUrlLogo.url : null;
+    const restImage = imageUrlRest ? imageUrlRest.url : null;
     return (
       <View style={styles.container}>
+        {/* <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={100}> */}
         <StatusBar backgroundColor="transparent" />
 
         <View>
-          <Image source={item.photoSrc} style={styles.images} />
+          <Image
+            source={restImage ? { uri: restImage } : null}
+            style={styles.images}
+          />
           <TouchableOpacity
             style={styles.closeButton}
             onPress={() => this.props.navigation.goBack()}
@@ -457,11 +455,17 @@ class BirthdayPage extends Component {
                 {item.name}
               </Text>
               <View style={styles.rateStyle}>
-                <Image source={item.logo} style={styles.logo} />
+                <Image
+                  source={logo ? { uri: logo } : null}
+                  style={styles.logo}
+                />
               </View>
             </View>
             <View
-              style={{ flexDirection: "row", justifyContent: "space-between" }}
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+              }}
             >
               <Text>{item.place}</Text>
               <View style={{ flexDirection: "row", marginRight: "4%" }}>
@@ -507,6 +511,7 @@ class BirthdayPage extends Component {
               this.setState({ activeIndexButton: 1 });
               this.handleFoodButtonPress();
             }}
+            disabled={!this.isFormComplete()}
           >
             <Text style={styles.buttonText}>Food</Text>
           </TouchableOpacity>
@@ -519,121 +524,141 @@ class BirthdayPage extends Component {
               Keyboard.dismiss();
             }}
           >
-            <ScrollView style={styles.manageContainer}>
-              <Text style={styles.manageTitle}>Manage Your Birthday</Text>
-              <Text> Enter the name of the person</Text>
-              <TextInput
-                style={styles.manageInput}
-                placeholder="Name"
-                value={this.state.personName}
-                onChangeText={this.handleNameChange}
-              />
+            <KeyboardAvoidingView style={styles.container} behavior="padding">
+              <ScrollView style={styles.manageContainer}>
+                {/* <Text style={styles.manageTitle}>Manage Your Birthday</Text> */}
+                <Text style={styles.manageTitle}> Name</Text>
+                <TextInput
+                  style={styles.manageInput}
+                  placeholder="Name"
+                  value={this.state.personName}
+                  onChangeText={this.handleNameChange}
+                />
 
-              <Text>What should be Written on the cake</Text>
-              <TextInput
-                style={styles.manageInput}
-                placeholder="Sentence"
-                value={this.state.sentence}
-                onChangeText={this.handleSentenceChange}
-              />
+                <Text style={styles.manageTitle}>Write on Cake</Text>
+                <TextInput
+                  style={styles.manageInput}
+                  placeholder="Sentence"
+                  value={this.state.sentence}
+                  onChangeText={this.handleSentenceChange}
+                />
 
-              <View>
-                <Text style={styles.labelTime}>Select a time:</Text>
-                <View style={styles.buttonTime}>
+                <View>
+                  <Text style={styles.manageTitle}>Birthday Time:</Text>
+
                   <TouchableOpacity
-                    onPress={() => this.setState({ showTimePicker: true })}
+                    onPress={() => {
+                      this.onTimeChange;
+                    }}
                   >
-                    <FontAwesome5 name="clock" size={30} color="white" />
-                  </TouchableOpacity>
-                  {
-                    <DateTimePicker
-                      mode="time"
-                      value={this.state.selectedTime}
-                      is24Hour={true}
-                      display="default"
-                      onChange={this.onTimeChange}
-                    />
-                  }
-                </View>
-              </View>
-              <View>
-                <Text style={styles.labelTime}>Select the Date:</Text>
-                <View style={styles.buttonTime}>
-                  <TouchableOpacity
-                    onPress={() => this.setState({ showDatePicker: true })}
-                  >
-                    <FontAwesome5 name="calendar" size={30} color="white" />
-                  </TouchableOpacity>
-                  {
-                    <DateTimePicker
-                      mode="date"
-                      value={this.state.selectedDate}
-                      //is24Hour={true}
-                      display="default"
-                      onChange={this.onDateChange}
-                    />
-                  }
-                </View>
-              </View>
-
-              {/* <Text>How many sets do you want</Text>
-              <TextInput style={styles.manageInput} placeholder="Time" /> */}
-              <View>
-                <Text style={styles.labelTime}>Choose a Number</Text>
-                <TouchableOpacity
-                  style={styles.buttonTime}
-                  onPress={this.toggleModal}
-                >
-                  <FontAwesome5 name="chair" size={30} color="white" />
-                  <Text>
-                    {(this.state.selectedNumber !== null && (
-                      <Text style={styles.selectedNumber}>
-                        {this.state.selectedNumber}
-                      </Text>
-                    )) ||
-                      0}
-                  </Text>
-                </TouchableOpacity>
-
-                <Modal
-                  visible={this.state.modalVisibleSets}
-                  animationType="slide"
-                  onRequestClose={this.toggleModal}
-                >
-                  <View style={styles.modal}>
-                    <FlatList
-                      data={numbers}
-                      renderItem={this.renderNumber}
-                      keyExtractor={(item) => item.toString()}
-                      ItemSeparatorComponent={() => (
-                        <View style={styles.separator} />
+                    <View style={styles.buttonTime}>
+                      {this.state.selectedDate && this.state.selectedTime && (
+                        <DateTimePicker
+                          mode="time"
+                          value={this.state.selectedTime}
+                          is24Hour={true}
+                          display="default"
+                          onChange={this.onTimeChange}
+                          //   style={{}}
+                        />
                       )}
-                    />
 
+                      <FontAwesome5 name="clock" size={30} color="#f6437b" />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+                <View>
+                  <Text style={styles.manageTitle}>Birthday Date:</Text>
+                  <View style={styles.buttonTime}>
+                    {this.state.selectedDate && this.state.selectedTime && (
+                      <DateTimePicker
+                        mode="date"
+                        value={this.state.selectedDate}
+                        //is24Hour={true}
+                        display="default"
+                        onChange={this.onDateChange}
+                        //   style={{ backgroundColor: "white", borderWidth: 0.5 }}
+                      />
+                    )}
                     <TouchableOpacity
-                      style={styles.closeButtonSets}
-                      onPress={this.toggleModal}
+                      onPress={() => this.setState({ showDatePicker: true })}
                     >
-                      <Text style={styles.closeButtonText}>Close</Text>
+                      <FontAwesome5 name="calendar" size={30} color="#f6437b" />
                     </TouchableOpacity>
                   </View>
-                </Modal>
-              </View>
+                </View>
 
-              <Text>write the of music you want to play</Text>
-              <TextInput
-                style={styles.manageInput}
-                placeholder="Music"
-                value={this.state.music}
-                onChangeText={this.handleMusicChange}
-              />
-            </ScrollView>
+                {/* <Text>How many sets do you want</Text>
+              <TextInput style={styles.manageInput} placeholder="Time" /> */}
+                <View>
+                  <Text style={styles.manageTitle}>Choose a Number</Text>
+                  <TouchableOpacity
+                    style={styles.buttonTime}
+                    onPress={this.toggleModal}
+                  >
+                    <Text>
+                      {(this.state.selectedNumber !== null && (
+                        <Text style={styles.selectedNumber}>
+                          {this.state.selectedNumber}
+                        </Text>
+                      )) ||
+                        0}
+                    </Text>
+                    <FontAwesome5 name="chair" size={30} color="#f6437b" />
+                  </TouchableOpacity>
+
+                  <Modal
+                    visible={this.state.modalVisibleSets}
+                    animationType="slide"
+                    onRequestClose={this.toggleModal}
+                    style={{ backgroundColor: "red" }}
+                  >
+                    <View style={styles.modal}>
+                      <FlatList
+                        data={numbers}
+                        renderItem={this.renderNumber}
+                        keyExtractor={(item) => item.toString()}
+                        ItemSeparatorComponent={() => (
+                          <View style={styles.separator} />
+                        )}
+                      />
+
+                      <TouchableOpacity
+                        style={styles.closeButtonSets}
+                        onPress={this.toggleModal}
+                      >
+                        <Text style={styles.closeButtonText}>Close</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </Modal>
+                </View>
+
+                <Text style={styles.manageTitle}>Music</Text>
+                <TextInput
+                  style={styles.manageInput}
+                  placeholder="Music"
+                  value={this.state.music}
+                  onChangeText={this.handleMusicChange}
+                />
+              </ScrollView>
+            </KeyboardAvoidingView>
           </TouchableWithoutFeedback>
         ) : (
           // render a different component if 'manage' button is active
           <View style={styles.itemslist}>
+            {/* <Text> here </Text>
+             <View>
+              <SectionList
+                sections={data}
+                keyExtractor={(item, index) => item + index}
+                renderItem={this.renderItem}
+                renderSectionHeader={this.renderSectionHeader}
+                //   renderSectionHeader={renderSectionHeader}
+              />
+            </View> */}
+
             <FlatList
-              data={DATA}
+              data={data}
               horizontal={true}
               renderItem={this.renderTitleItem}
               keyExtractor={(item, index) => index.toString()}
@@ -643,31 +668,28 @@ class BirthdayPage extends Component {
                 const index = Math.round(
                   (nativeEvent.contentOffset.x /
                     nativeEvent.contentSize.width) *
-                    DATA.length
+                    this.state.data.length
                 );
-                if (index !== this.state.activeIndex) {
+                if (index >= 0 && index !== this.state.activeIndex) {
                   this.setState({ activeIndex: index });
                 }
               }}
               scrollEventThrottle={16}
             />
+
             <SectionList
-              sections={DATA}
+              sections={data}
               renderItem={this.renderItem}
-              keyExtractor={(item) => item.id.toString()}
-              renderSectionHeader={({ section }) => (
-                <View style={styles.sectionHeaderContainer}>
-                  <Text style={styles.sectionHeaderTitle}>{section.title}</Text>
-                </View>
-              )}
+              renderSectionHeader={this.renderSectionHeader}
+              keyExtractor={(item, index) => index.toString()}
               ref={this.sectionListRef}
               onScroll={({ nativeEvent }) => {
-                const index = Math.round(
+                const index = Math.floor(
                   (nativeEvent.contentOffset.y /
                     nativeEvent.contentSize.height) *
-                    DATA.length
+                    this.state.data.length
                 );
-                if (index !== this.state.activeIndex) {
+                if (index >= 0 && index !== this.state.activeIndex) {
                   this.setState({ activeIndex: index });
                   this.titleListRef.current.scrollToIndex({
                     index,
@@ -675,7 +697,7 @@ class BirthdayPage extends Component {
                   });
                 }
               }}
-              stickySectionHeadersEnabled={false}
+              // stickySectionHeadersEnabled={false}
               ListHeaderComponent={<View style={{ height: 10 }} />}
             />
           </View>
@@ -696,30 +718,44 @@ class BirthdayPage extends Component {
                     selectedNumber,
                   } = this.state;
 
-                  const newCart = [
-                    ...personInfo,
-                    {
+                  const existingPersonIndex = personInfo.findIndex(
+                    (person) => person.personName === personName
+                  );
+
+                  if (existingPersonIndex !== -1) {
+                    const updatedPersonInfo = [...personInfo];
+                    updatedPersonInfo[existingPersonIndex] = {
+                      ...updatedPersonInfo[existingPersonIndex],
+                      music,
+                      sentence,
+                      selectedTime,
+                      selectedDate,
+                      selectedNumber,
+                    };
+                    this.setState({
+                      personInfo: updatedPersonInfo,
+                    });
+                  } else {
+                    const newPersonInfo = {
                       personName,
                       music,
                       sentence,
                       selectedTime,
                       selectedDate,
                       selectedNumber,
-                    },
-                  ];
+                    };
+                    this.setState((prevState) => ({
+                      personInfo: [...prevState.personInfo, newPersonInfo],
+                    }));
+                  }
 
                   this.setState({
-                    personInfo: newCart,
-                    personName: "",
-                    music: "",
-                    sentence: "",
-                    selectedNumber: "",
-                    selectedTime: "",
-                    selectedDate: "",
                     activeIndexButton: 1,
                   });
+
                   this.handleFoodButtonPress();
                 }}
+                disabled={!this.isFormComplete()}
               >
                 <View style={{ flexDirection: "row" }}>
                   <Text style={{ fontSize: 16, color: "#ffff" }}>Next</Text>
@@ -733,6 +769,7 @@ class BirthdayPage extends Component {
                   this.props.navigation.navigate("ViewCart", {
                     cart: this.state.cart,
                     personInfo: this.state.personInfo,
+                    item: item,
                   })
                 }
               >
@@ -763,6 +800,7 @@ class BirthdayPage extends Component {
             </View>
           )}
         </View>
+        {/* </KeyboardAvoidingView> */}
       </View>
     );
   }
@@ -776,7 +814,7 @@ const mapStateToProps = (state) => {
 
 const mapDispatchToProps = (dispatch) => {
   return {
-    addArray: (array) => dispatch(addArray(array)),
+    // addArray: (array) => dispatch(addArray(array)),
   };
 };
 export default connect(mapStateToProps, mapDispatchToProps)(BirthdayPage);
@@ -1110,7 +1148,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   manageTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
     marginBottom: 10,
     justifyContent: "center",
@@ -1151,12 +1189,22 @@ const styles = StyleSheet.create({
   },
   buttonTime: {
     flexDirection: "row",
-    backgroundColor: "gray",
-    //paddingVertical: 10,
+    backgroundColor: "white",
+    paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 5,
     justifyContent: "space-between",
     alignItems: "center",
+    // width: 400,
+    // borderWidth: 1,
+    shadowColor: "red",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    elevation: 2,
   },
   buttonTextTime: {
     color: "#FFFFFF",
@@ -1172,8 +1220,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   modal: {
-    flex: 1,
+    //flex: 1,
     backgroundColor: "#FFFFFF",
+
     paddingVertical: 16,
     paddingHorizontal: 24,
   },

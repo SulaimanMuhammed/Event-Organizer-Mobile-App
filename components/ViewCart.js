@@ -8,58 +8,84 @@ import {
   SafeAreaView,
   ScrollView,
   Dimensions,
+  Alert,
 } from "react-native";
 import { FontAwesome5 } from "react-native-vector-icons";
-import { Alert } from "react-native";
+//import { Alert } from "react-native";
 import { Modal } from "react-native";
-export default class ViewCart extends React.Component {
-  handleCheckout = () => {
-    if (this.props.isLoggedIn) {
-      // Prompt the user to log in or create an account
-      // this.setState({ showModal: true });
-      this.props.navigation.navigate("Login");
-    } else {
-      this.setState({ showModal: true });
+
+import { connect } from "react-redux";
+import { addOrder } from "../redux/Actions";
+import { app } from "../Firebase";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  addDoc,
+  addToCollection,
+  collection,
+} from "firebase/firestore";
+
+// import { LoginAndRegister } from "./Login";
+class ViewCart extends React.Component {
+  handleCheckout = async () => {
+    const { userData, navigation, selectedData, addOrder } = this.props;
+    const { cart, personInfo, item } = this.props.route.params;
+    // const fromCheckout = this.props.route.params.fromCheckout;
+    try {
+      if (userData) {
+        const db = getFirestore(app);
+        const currentUser = app.auth().currentUser;
+        const userId = currentUser.uid;
+        const ordersCollection = collection(db, "orders");
+        const order = {
+          cart: cart,
+          birthdayInfo: personInfo,
+          userId: userId,
+          item: item,
+        };
+
+        const alertButtons = [
+          {
+            text: "No",
+            onPress: () => {
+              // Do nothing or add any desired logic
+              navigation.goBack();
+            },
+            style: "cancel",
+          },
+          {
+            text: "Yes",
+            onPress: async () => {
+              await setDoc(doc(ordersCollection), order);
+              addOrder(order);
+              navigation.navigate("Home");
+            },
+          },
+        ];
+
+        Alert.alert(
+          "Success",
+          "Reservation successful! Do you want to proceed?",
+          alertButtons
+        );
+      } else {
+        navigation.navigate("LoginAndRegister", {
+          onLoginSuccess: this.handleLoginSuccess,
+        });
+      }
+    } catch (error) {
+      console.error("Error adding order:", error);
     }
-    // Check if user is logged in
-    // if (!this.props.isLoggedIn) {
-    //   // Prompt the user to log in or create an account
-    //   Alert.alert(
-    //     'You must be logged in to checkout',
-    //     'Do you want to log in or create an account?',
-    //     [
-    //       {
-    //         text: 'Log in',
-    //         onPress: () => this.props.navigation.navigate('Login'),
+  };
 
-    //       },
-    //       {
-    //         text: 'Create account',
-    //         onPress: () => this.props.navigation.navigate('Register')
-    //       },
-    //       {
-    //         text: 'Cancel',
-    //         onPress: () => this.props.navigation.navigate('Home'),
-    //         style: 'cancel'
-    //       }
-    //     ],
-    //     {
-    //       cancelable: false,
+  // ...
 
-    //         // Styling object
-    //         titleStyle: styles.title,
-    //         messageStyle: styles.message,
-    //         buttonTextStyle: styles.buttonText,
-    //         overlayStyle: styles.overlay,
-    //         // ... other style properties as needed
-
-    //   }
-    //   );
-    // }
-    // else{
-    //   // this.props.navigation.navigate('');
-    //   Alert.alert("successfly booked for you")
-    // }
+  handleLoginSuccess = () => {
+    // User has successfully logged in
+    // Continue the checkout process
+    // this.setState({ showModal: false });
+    this.handleCheckout();
   };
 
   hideModal = () => {
@@ -83,54 +109,6 @@ export default class ViewCart extends React.Component {
 
     return (
       <SafeAreaView style={styles.container}>
-        <Modal
-          visible={this.state.showModal}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={this.hideModal}
-          style={
-            {
-              //justifyContent: 'center',
-            }
-          }
-        >
-          <View style={styles.overlay}>
-            <View style={styles.popupContainer}>
-              <Text> You must be logged in to checkout</Text>
-              <TouchableOpacity
-                style={styles.eachButtonPoup}
-                onPress={() => {
-                  this.props.navigation.navigate("Login");
-                  this.hideModal();
-                }}
-              >
-                <Text style={styles.textEachPopup}> Login</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.eachButtonPoup}
-                onPress={() => {
-                  this.props.navigation.navigate("Register"), this.hideModal;
-                }}
-              >
-                <Text style={styles.textEachPopup}> Register</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.eachButtonPoup}
-                onPress={() => {
-                  this.props.navigation.navigate("Home"), this.hideModal;
-                }}
-              >
-                <Text style={styles.textEachPopup}> cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={this.hideModal}>
-                <Text>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-          {/* ...login/create account form */}
-        </Modal>
-
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.closeButton}
@@ -154,7 +132,7 @@ export default class ViewCart extends React.Component {
               style={styles.fireworks}
             />
           </View>
-          <Image
+          {/* <Image
             source={require("../photos/happy.png")}
             style={{
               width: "70%",
@@ -164,26 +142,51 @@ export default class ViewCart extends React.Component {
               top: "10%",
               left: "15%",
             }}
-          />
+          /> */}
 
-          {/* <Text style={styles.title}>Hersh Gyan </Text> */}
+          <View
+            style={{
+              position: "absolute",
+              top: "10%",
+              left: 0,
+              right: 0,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "bold",
+                color: "#f6437b",
+                textShadowColor: "rgba(0, 0, 0, 0.5)",
+                textShadowOffset: { width: 1, height: 1 },
+                textShadowRadius: 2,
+                letterSpacing: 1,
+                zIndex: 1,
+              }}
+            >
+              Happy Birthday
+            </Text>
+          </View>
+
           <View
             style={{
               marginTop: "0%",
-              borderBottomWidth: 1,
-              borderBottomColor: "#ccc",
+              borderBottomWidth: 3,
+              borderBottomColor: "black",
+              // backgroundColor: "#",
+              //  paddingVertical: 10,
             }}
           >
-            {personInfo.map((item) => (
-              <View key={item.id}>
-                <View
-                  style={{ justifyContent: "center", alignItems: "center" }}
-                >
-                  <Text style={styles.title}>{item.personName}</Text>
+            {personInfo.map((item, index) => (
+              <View key={index}>
+                <View style={styles.personNameContainer}>
+                  <Text style={styles.personName}>{item.personName}</Text>
                 </View>
-                <View style={styles.separator} />
+                {/* <View style={styles.separator} /> */}
                 <View style={styles.cartInfoConatiner}>
-                  <View style={{ flexDirection: "row", width: 100 }}>
+                  <View style={styles.icons}>
                     <FontAwesome5 name="clock" style={styles.iconStyle} />
                     <Text style={styles.textInfo}>
                       {item.selectedTime.toLocaleTimeString([], {
@@ -193,7 +196,7 @@ export default class ViewCart extends React.Component {
                       })}
                     </Text>
                   </View>
-                  <View style={{ flexDirection: "row", width: 100 }}>
+                  <View style={styles.icons}>
                     <FontAwesome5 name="calendar" style={styles.iconStyle} />
                     <Text style={styles.textInfo}>
                       {item.selectedDate.toLocaleDateString("en-US")}
@@ -201,11 +204,11 @@ export default class ViewCart extends React.Component {
                   </View>
                 </View>
                 <View style={styles.cartInfoConatiner}>
-                  <View style={{ flexDirection: "row", width: 100 }}>
+                  <View style={styles.icons}>
                     <FontAwesome5 name="music" style={styles.iconStyle} />
                     <Text style={styles.textInfo}>{item.music}</Text>
                   </View>
-                  <View style={{ flexDirection: "row", width: 100 }}>
+                  <View style={styles.icons}>
                     <FontAwesome5 name="chair" style={styles.iconStyle} />
                     <Text style={styles.textInfo}>{item.selectedNumber}</Text>
                   </View>
@@ -232,7 +235,10 @@ export default class ViewCart extends React.Component {
                 }}
               >
                 <View style={styles.cartItemLeft}>
-                  <Image source={item.source} style={styles.cartItemImage} />
+                  <Image
+                    source={{ uri: item.imgUrl }}
+                    style={styles.cartItemImage}
+                  />
                   <View style={styles.cartItemDetails}>
                     <Text style={styles.cartItemName}>{item.name}</Text>
                     <Text style={styles.cartItemPrice}>
@@ -284,6 +290,17 @@ export default class ViewCart extends React.Component {
     );
   }
 }
+const mapStateToProps = (state) => {
+  return {
+    userData: state.user.userInfo,
+    //arrayOfArrays: state.arrayOfArrays,
+  };
+};
+const mapDispatchToProps = (dispatch) => ({
+  addOrder: (order) => dispatch(addOrder(order)),
+  // hasReservation: dispatch(hasReservation("reserved")),
+});
+export default connect(mapStateToProps, mapDispatchToProps)(ViewCart);
 
 const windowWidth = Dimensions.get("window").width;
 
@@ -453,17 +470,17 @@ const styles = StyleSheet.create({
   popupContainer: {
     // position: 'absolute',
     //top:"30%",
-    width: "90%",
+    width: "100%",
     bottom: 0,
     left: 0,
-    // right: 100,
-    height: "40%",
+
+    height: "100%",
     backgroundColor: "#fff",
     borderRadius: 20,
     //borderTopRightRadius: 20,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    justifyContent: "space-around",
+    justifyContent: "center",
     alignItems: "center",
   },
   overlay: {
@@ -477,12 +494,45 @@ const styles = StyleSheet.create({
     backgroundColor: "#f6437b",
     padding: 20,
     borderRadius: 20,
-    width: "70%",
+    width: "100%",
     justifyContent: "center",
     alignItems: "center",
+    marginTop: "10%",
   },
   textEachPopup: {
     fontSize: 16,
     color: "#ffff",
+  },
+  buttonsAferSet: {
+    width: "60%",
+
+    alignItems: "center",
+  },
+  personNameContainer: {
+    position: "absolute",
+    bottom: "100%",
+    left: 0,
+    right: 0,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  personName: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  icons: {
+    flexDirection: "row",
+    width: "30%",
+    backgroundColor: "#fff",
+    borderRadius: 3,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    elevation: 2,
   },
 });

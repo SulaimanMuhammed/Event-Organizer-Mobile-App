@@ -1,10 +1,11 @@
-import React from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import Page1 from './Home';
-import UserPage from './UserPage';
+import React from "react";
+import { View, Text, Button, StyleSheet } from "react-native";
+import { NavigationContainer } from "@react-navigation/native";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import Ionicons from "react-native-vector-icons/Ionicons";
+import Page1 from "./Home";
+import UserPage from "./UserPage";
+import SearchPage from "./SearchPage";
 
 const Tab = createBottomTabNavigator();
 
@@ -34,24 +35,21 @@ function User({ navigation }) {
 
 function SearchScreen({ navigation }) {
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Text>Search Screen</Text>
-      <Button
-        title="Go to Home"
-        onPress={() => navigation.navigate('Home')}
-      />
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+      <SearchPage />
+      <Button title="Go to Home" onPress={() => navigation.navigate("Home")} />
     </View>
   );
 }
 
 function tabBarIcon(route, focused, color, size) {
   let iconName;
-  if (route.name === 'Home') {
-    iconName = focused ? 'home' : 'home-outline';
-  } else if (route.name === 'Search') {
-    iconName = focused ? 'search' : 'search-outline';
-  } else if (route.name === 'User') {
-    iconName = focused ? 'person' : 'person-outline';
+  if (route.name === "Home") {
+    iconName = focused ? "home" : "home-outline";
+  } else if (route.name === "Search") {
+    iconName = focused ? "search" : "search-outline";
+  } else if (route.name === "User") {
+    iconName = focused ? "person" : "person-outline";
   }
   return <Ionicons name={iconName} size={size} color={color} />;
 }
@@ -64,8 +62,8 @@ function App() {
             tabBarIcon(route, focused, color, size),
         })}
         tabBarOptions={{
-          activeTintColor: 'tomato',
-          inactiveTintColor: 'gray',
+          activeTintColor: "tomato",
+          inactiveTintColor: "gray",
           style: styles.tabBar,
         }}
       >
@@ -73,9 +71,9 @@ function App() {
           name="Home"
           component={HomeScreen}
           options={{
-          headerShown: false,
+            headerShown: false,
             tabBarIcon: ({ color, size }) => (
-        <Ionicons name="ios-home" color={color} size={size} />
+              <Ionicons name="ios-home" color={color} size={size} />
             ),
           }}
         />
@@ -103,11 +101,11 @@ function App() {
 }
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderTopWidth: 1,
-    borderTopColor: '#ccc',
+    borderTopColor: "#ccc",
     borderTopLeftRadius: 15,
-    borderTopRightRadius: 15, 
+    borderTopRightRadius: 15,
   },
 });
 export default App;
